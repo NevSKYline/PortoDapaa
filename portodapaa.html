@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Portfolio & Vault</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Inter"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #09090b;
+            color: #fafafa;
+        }
+        .card-surface {
+            background-color: #121215;
+            border: 1px solid #27272a;
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #09090b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #27272a;
+            border-radius: 99px;
+        }
+    </style>
+</head>
+<body class="min-h-screen antialiased selection:bg-emerald-500/20 selection:text-emerald-300">
+
+    <!-- Toast Notification -->
+    <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Main Compact Container -->
+    <div class="max-w-4xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-3.5">
+
+        <!-- 1. COMPACT HEADER ROW (Profil, Sosmed, Switcher & Admin Toolbar) -->
+        <header class="card-surface rounded-2xl px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <!-- Avatar: Klik 5x untuk membuka akses Admin -->
+                <button id="avatarTrigger" onclick="handleAvatarTap()" title="Profil Trader" class="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 flex items-center justify-center font-mono text-sm font-bold text-emerald-400 shrink-0 select-none active:scale-95 transition">
+                    <span id="profileInitials">RP</span>
+                </button>
+
+                <div class="min-w-0">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <h1 id="displayName" class="text-sm sm:text-base font-bold text-white truncate">Rizky Pratama</h1>
+                        <span id="displayAlias" class="text-[11px] font-mono px-2 py-0.5 rounded-md bg-zinc-800/90 text-zinc-300 border border-zinc-700/60">@kyy.trade</span>
+                        <i class="fa-solid fa-circle-check text-emerald-400 text-xs" title="Verified Track Record"></i>
+                    </div>
+                    <div class="flex items-center gap-3 mt-1">
+                        <p id="displayBio" class="text-xs text-zinc-400 truncate max-w-[230px] sm:max-w-xs">Swing & Intraday • Risk 1% per trade</p>
+                        <!-- Social Media Links -->
+                        <div id="socialLinksBar" class="flex items-center gap-2 text-zinc-400 text-xs border-l border-zinc-800 pl-2.5">
+                            <!-- Diisi otomatis via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Controls -->
+            <div class="flex items-center gap-1.5 flex-wrap self-end sm:self-center">
+                <!-- Admin Toolbar (Tersembunyi secara default untuk publik) -->
+                <div id="adminToolbar" class="hidden items-center gap-1.5 flex-wrap">
+                    <button onclick="openModal('tradeModal')" class="px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-semibold transition flex items-center gap-1">
+                        <i class="fa-solid fa-plus text-[10px]"></i> Trade
+                    </button>
+                    <button onclick="openModal('cashflowModal')" class="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-100 text-xs font-medium transition flex items-center gap-1">
+                        <i class="fa-solid fa-wallet text-cyan-400 text-[10px]"></i> Dana
+                    </button>
+                    <button onclick="openProfileModal()" class="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 text-xs transition" title="Edit Profil & Sosmed">
+                        <i class="fa-solid fa-user-pen"></i>
+                    </button>
+                    <button onclick="openExportModal()" class="px-2.5 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 text-xs font-medium transition flex items-center gap-1" title="Export data.json untuk GitHub">
+                        <i class="fa-solid fa-cloud-arrow-up text-[10px]"></i> Export
+                    </button>
+                    <button onclick="lockAdmin()" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 text-xs transition" title="Kunci Mode Admin">
+                        <i class="fa-solid fa-lock"></i>
+                    </button>
+                </div>
+
+                <!-- Currency Switcher (Selalu tampil untuk publik) -->
+                <button onclick="toggleCurrency()" class="px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-mono font-semibold text-zinc-300 transition">
+                    <span id="currencyBadge">IDR</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- 2. UNIFIED WALLET & PERFORMANCE CARD (Semua Saldo & Metrik Jadi 1 Kartu) -->
+        <section class="card-surface rounded-2xl p-4 sm:p-5">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-center">
+                
+                <!-- Left (7 cols): Total Kekayaan + Bar Pembagian Modal Trade vs Dompet Aman -->
+                <div class="md:col-span-7 space-y-3">
+                    <div class="flex items-baseline justify-between">
+                        <div>
+                            <span class="text-[11px] uppercase tracking-wider text-zinc-400 font-medium">Total Kekayaan Trading</span>
+                            <div id="totalWealthVal" class="font-mono text-2xl sm:text-3xl font-bold text-white tracking-tight mt-0.5">Rp 0</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[11px] text-zinc-500 block">Net Profit Murni</span>
+                            <span id="netProfitVal" class="font-mono text-xs sm:text-sm font-semibold text-emerald-400">+Rp 0</span>
+                        </div>
+                    </div>
+
+                    <!-- Segmented Progress Bar (Modal Aktif vs Dompet Aman) -->
+                    <div class="w-full h-2 rounded-full bg-zinc-800 overflow-hidden flex">
+                        <div id="activeBar" class="bg-emerald-500 h-full transition-all duration-500" style="width: 50%"></div>
+                        <div id="vaultBar" class="bg-cyan-400 h-full transition-all duration-500" style="width: 50%"></div>
+                    </div>
+
+                    <!-- Inline Breakdown: Uang Trading vs Uang Aman -->
+                    <div class="grid grid-cols-2 gap-3 pt-0.5">
+                        <div class="flex items-center justify-between bg-zinc-900/80 border border-zinc-800/80 rounded-xl px-3 py-2">
+                            <div>
+                                <span class="text-[11px] text-zinc-400 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Modal Trading
+                                </span>
+                                <span id="activeCapVal" class="font-mono text-xs sm:text-sm font-bold text-white block mt-0.5">Rp 0</span>
+                            </div>
+                            <span id="activePctVal" class="font-mono text-[11px] text-emerald-400">0%</span>
+                        </div>
+
+                        <div class="flex items-center justify-between bg-zinc-900/80 border border-zinc-800/80 rounded-xl px-3 py-2">
+                            <div>
+                                <span class="text-[11px] text-zinc-400 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-cyan-400"></span> Dompet Aman
+                                </span>
+                                <span id="vaultBalVal" class="font-mono text-xs sm:text-sm font-bold text-white block mt-0.5">Rp 0</span>
+                            </div>
+                            <span id="vaultPctVal" class="font-mono text-[11px] text-cyan-400">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right (5 cols): 4 Key Performance Metrics dalam 1 Grid Ringkas -->
+                <div class="md:col-span-5 md:border-l md:border-zinc-800 md:pl-5 grid grid-cols-2 gap-3">
+                    <div class="bg-zinc-900/50 rounded-xl p-2.5 border border-zinc-800/60">
+                        <span class="text-[11px] text-zinc-400 block">Pure ROI</span>
+                        <span id="roiVal" class="font-mono text-base sm:text-lg font-bold text-emerald-400">+0.0%</span>
+                        <span class="text-[10px] text-zinc-500 block">Kebal withdraw</span>
+                    </div>
+                    <div class="bg-zinc-900/50 rounded-xl p-2.5 border border-zinc-800/60">
+                        <span class="text-[11px] text-zinc-400 block">Win Rate</span>
+                        <span id="winRateVal" class="font-mono text-base sm:text-lg font-bold text-white">0%</span>
+                        <span id="totalTradesSub" class="text-[10px] text-zinc-500 block">0 total trade</span>
+                    </div>
+                    <div class="bg-zinc-900/50 rounded-xl p-2.5 border border-zinc-800/60">
+                        <span class="text-[11px] text-zinc-400 block">Profit Factor</span>
+                        <span id="pfVal" class="font-mono text-base sm:text-lg font-bold text-white">0.00</span>
+                        <span class="text-[10px] text-zinc-500 block">Rasio profit/loss</span>
+                    </div>
+                    <div class="bg-zinc-900/50 rounded-xl p-2.5 border border-zinc-800/60">
+                        <span class="text-[11px] text-zinc-400 block">Dana Ditarik</span>
+                        <span id="cashOutVal" class="font-mono text-sm sm:text-base font-bold text-cyan-300">Rp 0</span>
+                        <span class="text-[10px] text-zinc-500 block">Realisasi profit</span>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 3. COMPACT EQUITY CURVE CHART CARD -->
+        <section class="card-surface rounded-2xl p-4">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <h2 class="text-xs font-semibold text-zinc-300">Kurva Pertumbuhan Profit</h2>
+                    <span class="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-400">Pure PnL</span>
+                </div>
+                <!-- Timeframe Filter -->
+                <div class="flex items-center gap-1 bg-zinc-900 p-0.5 rounded-lg border border-zinc-800 text-[11px] font-mono">
+                    <button onclick="setChartFilter('ALL')" id="tf-ALL" class="px-2 py-0.5 rounded bg-zinc-700 text-white">ALL</button>
+                    <button onclick="setChartFilter('30D')" id="tf-30D" class="px-2 py-0.5 rounded text-zinc-400 hover:text-white">30D</button>
+                    <button onclick="setChartFilter('7D')" id="tf-7D" class="px-2 py-0.5 rounded text-zinc-400 hover:text-white">7D</button>
+                </div>
+            </div>
+            <div class="h-[175px] w-full">
+                <canvas id="equityChart"></canvas>
+            </div>
+        </section>
+
+        <!-- 4. UNIFIED ACTIVITY LOG CARD (Jurnal Trade & Arus Kas Anti-Minus dalam 1 Kartu) -->
+        <section class="card-surface rounded-2xl overflow-hidden">
+            <div class="px-4 pt-3 pb-2 border-b border-zinc-800 flex items-center justify-between">
+                <div class="flex items-center gap-1 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+                    <button onclick="switchTab('trades')" id="tabBtnTrades" class="px-3 py-1 rounded-lg text-xs font-semibold bg-zinc-800 text-white transition">
+                        Jurnal Trade <span id="badgeTradeCount" class="ml-1 font-mono text-[10px] text-zinc-400">0</span>
+                    </button>
+                    <button onclick="switchTab('cashflow')" id="tabBtnCashflow" class="px-3 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white transition">
+                        Arus Kas <span id="badgeCfCount" class="ml-1 font-mono text-[10px] text-zinc-500">0</span>
+                    </button>
+                </div>
+                <span id="tabHintText" class="text-[11px] text-zinc-500 hidden sm:inline">Riwayat eksekusi market</span>
+            </div>
+
+            <!-- Tab 1: Jurnal Trade -->
+            <div id="panelTrades" class="overflow-x-auto max-h-[280px]">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-zinc-800/80 text-[10px] uppercase tracking-wider text-zinc-500 bg-zinc-900/40">
+                            <th class="py-2.5 px-4 font-medium">Tanggal</th>
+                            <th class="py-2.5 px-3 font-medium">Pair</th>
+                            <th class="py-2.5 px-3 font-medium">Posisi</th>
+                            <th class="py-2.5 px-3 font-medium text-right">PnL</th>
+                            <th class="py-2.5 px-4 font-medium">Catatan</th>
+                            <th class="py-2.5 px-3 font-medium text-right admin-col hidden">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tradeRows" class="divide-y divide-zinc-800/50 text-xs"></tbody>
+                </table>
+            </div>
+
+            <!-- Tab 2: Arus Kas (Anti-Minus) -->
+            <div id="panelCashflow" class="hidden overflow-x-auto max-h-[280px]">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-zinc-800/80 text-[10px] uppercase tracking-wider text-zinc-500 bg-zinc-900/40">
+                            <th class="py-2.5 px-4 font-medium">Tanggal</th>
+                            <th class="py-2.5 px-3 font-medium">Aktivitas</th>
+                            <th class="py-2.5 px-3 font-medium">Alur Dana</th>
+                            <th class="py-2.5 px-3 font-medium text-right">Nominal</th>
+                            <th class="py-2.5 px-4 font-medium">Keterangan</th>
+                            <th class="py-2.5 px-3 font-medium text-right admin-col hidden">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cashflowRows" class="divide-y divide-zinc-800/50 text-xs"></tbody>
+                </table>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- ================= MODALS ================= -->
+
+    <!-- MODAL: ADMIN PASSWORD UNLOCK -->
+    <div id="unlockModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="card-surface rounded-2xl max-w-xs w-full p-5 shadow-2xl">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-emerald-400"></i> Akses Owner
+                </h3>
+                <button onclick="closeModal('unlockModal')" class="text-zinc-500 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <p class="text-xs text-zinc-400 mb-3">Masukkan password untuk mengaktifkan mode edit portofolio.</p>
+            <form onsubmit="verifyAdminPassword(event)" class="space-y-3">
+                <input type="password" id="adminPassInput" placeholder="Password admin..." required class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none">
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('unlockModal')" class="px-3 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-white">Batal</button>
+                    <button type="submit" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-zinc-950">Buka Akses</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: + TRADE -->
+    <div id="tradeModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="card-surface rounded-2xl max-w-sm w-full p-5 shadow-2xl">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold text-white">Catat Hasil Trade</h3>
+                <button onclick="closeModal('tradeModal')" class="text-zinc-500 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="tradeForm" onsubmit="submitTrade(event)" class="space-y-3">
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-[11px] text-zinc-400 mb-1">Tanggal</label>
+                        <input type="date" id="tDate" required class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-zinc-400 mb-1">Pair / Aset</label>
+                        <input type="text" id="tPair" placeholder="BTC/USDT" required class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white uppercase focus:border-emerald-500 focus:outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-[11px] text-zinc-400 mb-1">Posisi</label>
+                        <select id="tSide" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none">
+                            <option value="LONG">LONG / BUY</option>
+                            <option value="SHORT">SHORT / SELL</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-zinc-400 mb-1">PnL (<span class="unit-label">Rp</span>)</label>
+                        <input type="number" id="tPnl" step="any" placeholder="500000 / -200000" required class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs font-mono text-white focus:border-emerald-500 focus:outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] text-zinc-400 mb-1">Catatan</label>
+                    <input type="text" id="tNote" placeholder="Setup breakout..." class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none">
+                </div>
+                <div class="flex justify-end gap-2 pt-1">
+                    <button type="button" onclick="closeModal('tradeModal')" class="px-3 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-white">Batal</button>
+                    <button type="submit" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-zinc-950">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: KELOLA DANA -->
+    <div id="cashflowModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="card-surface rounded-2xl max-w-sm w-full p-5 shadow-2xl">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold text-white">Kelola Dana & Dompet</h3>
+                <button onclick="closeModal('cashflowModal')" class="text-zinc-500 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 mb-3 text-[11px]">
+                <div>
+                    <span class="text-zinc-500 block">Dompet Aman:</span>
+                    <span id="mVaultPreview" class="font-mono font-semibold text-cyan-400">Rp 0</span>
+                </div>
+                <div>
+                    <span class="text-zinc-500 block">Modal Trading:</span>
+                    <span id="mActivePreview" class="font-mono font-semibold text-emerald-400">Rp 0</span>
+                </div>
+            </div>
+            <form id="cashflowForm" onsubmit="submitCashflow(event)" class="space-y-3">
+                <div>
+                    <label class="block text-[11px] text-zinc-400 mb-1">Jenis Transaksi</label>
+                    <select id="cType" onchange="updateCfDesc()" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none">
+                        <option value="TOPUP">1. Top-Up ke Dompet Aman (Uang Masuk)</option>
+                        <option value="ALLOCATE">2. Transfer Dompet ➔ Modal Trade</option>
+                        <option value="VAULT">3. Amankan Profit (Modal Trade ➔ Dompet)</option>
+                        <option value="WITHDRAW">4. Tarik Uang Keluar (Withdraw ke Rek)</option>
+                    </select>
+                    <p id="cDescHelper" class="text-[10px] text-zinc-400 mt-1">Menambah saldo ke Dompet Aman dari rekening pribadi.</p>
+                </div>
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-[11px] text-zinc-400 mb-1">Tanggal</label>
+                        <input type="date" id="cDate" required class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-zinc-400 mb-1">Nominal (<span class="unit-label">Rp</span>)</label>
+                        <input type="number" id="cAmount" step="any" min="1" placeholder="1000000" required class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs font-mono text-white focus:border-cyan-500 focus:outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] text-zinc-400 mb-1">Keterangan</label>
+                    <input type="text" id="cNote" placeholder="Panen profit minggu ini..." required class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none">
+                </div>
+                <div class="flex justify-end gap-2 pt-1">
+                    <button type="button" onclick="closeModal('cashflowModal')" class="px-3 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-white">Batal</button>
+                    <button type="submit" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500 hover:bg-cyan-400 text-zinc-950">Proses</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: EDIT PROFIL, SOSMED & GANTI PASSWORD -->
+    <div id="profileModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="card-surface rounded-2xl max-w-md w-full p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold text-white">Edit Profil & Sosial Media</h3>
+                <button onclick="closeModal('profileModal')" class="text-zinc-500 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="saveProfile(event)" class="space-y-3">
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-[11px] text-zinc-400 mb-1">Nama</label>
+                        <input type="text" id="pName" required class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-zinc-400 mb-1">Alias</label>
+                        <input type="text" id="pAlias" required class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs font-mono text-white focus:border-emerald-500 focus:outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] text-zinc-400 mb-1">Bio Singkat</label>
+                    <input type="text" id="pBio" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none">
+                </div>
+
+                <div class="pt-1 border-t border-zinc-800">
+                    <span class="text-[11px] font-semibold text-zinc-300 block mb-2">Link Sosial Media (Kosongkan jika tidak dipakai)</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="url" id="pX" placeholder="https://x.com/username" class="bg-zinc-950 border border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none">
+                        <input type="url" id="pTg" placeholder="https://t.me/username" class="bg-zinc-950 border border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none">
+                        <input type="url" id="pTv" placeholder="https://tradingview.com/u/..." class="bg-zinc-950 border border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none">
+                        <input type="url" id="pIg" placeholder="https://instagram.com/..." class="bg-zinc-950 border border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- Generator Hash Password Baru -->
+                <div class="pt-2 border-t border-zinc-800">
+                    <label class="block text-[11px] text-zinc-400 mb-1">Ganti Password Admin (Opsional)</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="newPassInput" placeholder="Ketik password baru..." class="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:border-cyan-500 focus:outline-none">
+                        <button type="button" onclick="applyNewPassword()" class="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs text-cyan-300 font-medium">Set Password</button>
+                    </div>
+                    <p class="text-[10px] text-zinc-500 mt-1">Password tersimpan dalam bentuk SHA-256 hash di dalam <code class="text-zinc-300">data.json</code>.</p>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('profileModal')" class="px-3 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-white">Batal</button>
+                    <button type="submit" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-zinc-950">Simpan Profil</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: EXPORT DATA.JSON UNTUK GITHUB -->
+    <div id="exportModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="card-surface rounded-2xl max-w-md w-full p-5 shadow-2xl">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-brands fa-github text-zinc-300"></i> Update Publik ke GitHub
+                </h3>
+                <button onclick="closeModal('exportModal')" class="text-zinc-500 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <ol class="text-xs text-zinc-400 space-y-1 mb-3 list-decimal list-inside">
+                <li>Klik <strong class="text-white">Download data.json</strong> (atau Copy JSON).</li>
+                <li>Upload / timpa file <code class="text-cyan-300">data.json</code> di repositori GitHub Pages Anda agar semua pengunjung melihat data terbaru.</li>
+            </ol>
+            <textarea id="exportJsonBox" readonly rows="6" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 font-mono text-[11px] text-zinc-300 focus:outline-none mb-3"></textarea>
+            <div class="flex justify-end gap-2">
+                <button onclick="copyJsonData()" class="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs text-white font-medium">
+                    <i class="fa-regular fa-copy mr-1"></i> Copy JSON
+                </button>
+                <button onclick="downloadJsonFile()" class="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-xs text-zinc-950 font-semibold">
+                    <i class="fa-solid fa-download mr-1"></i> Download data.json
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= JAVASCRIPT ================= -->
+    <script>
+        // Default SHA-256 hash untuk "admin123"
+        const DEFAULT_PASS_HASH = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9";
+        const USD_RATE = 16000;
+        const STORAGE_KEY = "porto_vault_v3_data";
+
+        let currency = "IDR";
+        let chartFilter = "ALL";
+        let isAdmin = false;
+        let tapCount = 0;
+        let tapTimer = null;
+        let chartInstance = null;
+
+        // Starter Default Data
+        let appData = {
+            passwordHash: DEFAULT_PASS_HASH,
+            profile: {
+                name: "Rizky Pratama",
+                alias: "@kyy.trade",
+                bio: "Swing & Intraday • Risk 1% per trade",
+                socials: {
+                    x: "https://x.com",
+                    telegram: "https://t.me",
+                    tradingview: "https://tradingview.com",
+                    instagram: "https://instagram.com"
+                }
+            },
+            cashflows: [
+                { id: 1, date: "2026-10-01", type: "TOPUP", amount: 20000000, note: "Modal awal ke Dompet Aman" },
+                { id: 2, date: "2026-10-02", type: "ALLOCATE", amount: 12000000, note: "Pindah dana ke akun trading" },
+                { id: 3, date: "2026-10-25", type: "VAULT", amount: 2500000, note: "Amankan profit Oktober" },
+                { id: 4, date: "2026-11-05", type: "WITHDRAW", amount: 2000000, note: "Tarik profit ke rekening bank" }
+            ],
+            trades: [
+                { id: 101, date: "2026-10-05", pair: "BTC/USDT", side: "LONG", pnl: 1250000, note: "Breakout H4" },
+                { id: 102, date: "2026-10-12", pair: "XAUUSD", side: "SHORT", pnl: -450000, note: "SL news CPI" },
+                { id: 103, date: "2026-10-20", pair: "SOL/USDT", side: "LONG", pnl: 1900000, note: "Trend continuation" },
+                { id: 104, date: "2026-11-03", pair: "ETH/USDT", side: "LONG", pnl: 1150000, note: "Rebound support" },
+                { id: 105, date: "2026-11-14", pair: "BTC/USDT", side: "LONG", pnl: 2100000, note: "Momentum rally" }
+            ]
+        };
+
+        // Load data: Prioritas ./data.json (GitHub Pages), lalu localStorage, lalu default
+        async function initApp() {
+            try {
+                const res = await fetch("./data.json?t=" + Date.now());
+                if (res.ok) {
+                    const remoteData = await res.json();
+                    if (remoteData && remoteData.profile) {
+                        appData = remoteData;
+                    }
+                } else {
+                    loadFromLocalStorage();
+                }
+            } catch (e) {
+                loadFromLocalStorage();
+            }
+            renderAll();
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    appData = JSON.parse(saved);
+                } catch (e) {}
+            }
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+        }
+
+        // SHA-256 Helper
+        async function sha256(text) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(text);
+            const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+            return Array.from(new Uint8Array(hashBuffer))
+                .map(b => b.toString(16).padStart(2, "0"))
+                .join("");
+        }
+
+        // Trigger rahasia: Klik avatar 5x
+        function handleAvatarTap() {
+            if (isAdmin) return;
+            tapCount++;
+            clearTimeout(tapTimer);
+            tapTimer = setTimeout(() => { tapCount = 0; }, 1500);
+
+            if (tapCount >= 5) {
+                tapCount = 0;
+                openModal("unlockModal");
+                setTimeout(() => document.getElementById("adminPassInput").focus(), 100);
+            }
+        }
+
+        // Shortcut Keyboard Ctrl+Shift+E
+        document.addEventListener("keydown", (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "e") {
+                e.preventDefault();
+                if (!isAdmin) openModal("unlockModal");
+            }
+        });
+
+        async function verifyAdminPassword(e) {
+            e.preventDefault();
+            const input = document.getElementById("adminPassInput").value;
+            const hashed = await sha256(input);
+            const targetHash = appData.passwordHash || DEFAULT_PASS_HASH;
+
+            if (hashed === targetHash) {
+                isAdmin = true;
+                document.getElementById("adminPassInput").value = "";
+                closeModal("unlockModal");
+                updateAdminUI();
+                showToast("Mode Admin aktif");
+            } else {
+                showToast("Password salah", true);
+            }
+        }
+
+        function lockAdmin() {
+            isAdmin = false;
+            updateAdminUI();
+            showToast("Mode Admin dikunci");
+        }
+
+        function updateAdminUI() {
+            const toolbar = document.getElementById("adminToolbar");
+            const adminCols = document.querySelectorAll(".admin-col");
+            if (isAdmin) {
+                toolbar.classList.remove("hidden");
+                toolbar.classList.add("flex");
+                adminCols.forEach(el => el.classList.remove("hidden"));
+            } else {
+                toolbar.classList.add("hidden");
+                toolbar.classList.remove("flex");
+                adminCols.forEach(el => el.classList.add("hidden"));
+            }
+            renderTables();
+        }
+
+        // Formatter Uang
+        function fmtMoney(idrVal, withSign = false) {
+            const val = currency === "IDR" ? idrVal : idrVal / USD_RATE;
+            const neg = val < 0;
+            const abs = Math.abs(val);
+            const str = currency === "IDR"
+                ? "Rp " + Math.round(abs).toLocaleString("id-ID")
+                : "$" + abs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            if (neg) return "-" + str;
+            if (withSign && val > 0) return "+" + str;
+            return str;
+        }
+
+        function toggleCurrency() {
+            currency = currency === "IDR" ? "USD" : "IDR";
+            document.getElementById("currencyBadge").innerText = currency;
+            document.querySelectorAll(".unit-label").forEach(el => el.innerText = currency === "IDR" ? "Rp" : "$");
+            renderAll();
+        }
+
+        // Kalkulasi Saldo & Performa
+        function computeStats() {
+            let vaultBal = 0;
+            let activeCap = 0;
+            let cashOut = 0;
+            let baseAllocated = 0;
+
+            appData.cashflows.forEach(c => {
+                if (c.type === "TOPUP") {
+                    vaultBal += c.amount;
+                } else if (c.type === "ALLOCATE") {
+                    vaultBal -= c.amount;
+                    activeCap += c.amount;
+                    baseAllocated += c.amount;
+                } else if (c.type === "VAULT") {
+                    activeCap -= c.amount;
+                    vaultBal += c.amount;
+                } else if (c.type === "WITHDRAW") {
+                    vaultBal -= c.amount;
+                    cashOut += c.amount;
+                }
+            });
+
+            let netPnl = 0, grossWin = 0, grossLoss = 0, wins = 0;
+            appData.trades.forEach(t => {
+                netPnl += t.pnl;
+                activeCap += t.pnl;
+                if (t.pnl >= 0) {
+                    grossWin += t.pnl;
+                    wins++;
+                } else {
+                    grossLoss += Math.abs(t.pnl);
+                }
+            });
+
+            const totalWealth = vaultBal + activeCap;
+            const roi = baseAllocated > 0 ? (netPnl / baseAllocated) * 100 : 0;
+            const winRate = appData.trades.length > 0 ? (wins / appData.trades.length) * 100 : 0;
+            const pf = grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? 9.99 : 0);
+
+            return { vaultBal, activeCap, totalWealth, cashOut, netPnl, roi, winRate, pf };
+        }
+
+        function renderProfile() {
+            const p = appData.profile;
+            document.getElementById("displayName").innerText = p.name;
+            document.getElementById("displayAlias").innerText = p.alias;
+            document.getElementById("displayBio").innerText = p.bio;
+
+            const parts = p.name.trim().split(" ");
+            const initials = parts.length > 1 ? (parts[0][0] + parts[1][0]).toUpperCase() : p.name.slice(0, 2).toUpperCase();
+            document.getElementById("profileInitials").innerText = initials || "TR";
+
+            // Render Sosial Media
+            const s = p.socials || {};
+            const links = [
+                { url: s.x, icon: "fa-brands fa-x-twitter", label: "X / Twitter" },
+                { url: s.telegram, icon: "fa-brands fa-telegram", label: "Telegram" },
+                { url: s.tradingview, icon: "fa-solid fa-chart-line", label: "TradingView" },
+                { url: s.instagram, icon: "fa-brands fa-instagram", label: "Instagram" }
+            ].filter(item => item.url && item.url.trim() !== "");
+
+            document.getElementById("socialLinksBar").innerHTML = links.map(l => `
+                <a href="${l.url}" target="_blank" rel="noopener noreferrer" title="${l.label}" class="hover:text-white transition">
+                    <i class="${l.icon}"></i>
+                </a>
+            `).join("");
+        }
+
+        function renderAll() {
+            renderProfile();
+            const st = computeStats();
+
+            document.getElementById("totalWealthVal").innerText = fmtMoney(st.totalWealth);
+            const netEl = document.getElementById("netProfitVal");
+            netEl.innerText = fmtMoney(st.netPnl, true);
+            netEl.className = `font-mono text-xs sm:text-sm font-semibold ${st.netPnl >= 0 ? "text-emerald-400" : "text-rose-400"}`;
+
+            // Ratio bar Modal Trading vs Dompet Aman
+            const safeTotal = st.totalWealth > 0 ? st.totalWealth : 1;
+            const activePct = Math.max(0, Math.min(100, Math.round((st.activeCap / safeTotal) * 100)));
+            const vaultPct = st.totalWealth > 0 ? 100 - activePct : 0;
+
+            document.getElementById("activeBar").style.width = `${activePct}%`;
+            document.getElementById("vaultBar").style.width = `${vaultPct}%`;
+            document.getElementById("activeCapVal").innerText = fmtMoney(st.activeCap);
+            document.getElementById("activePctVal").innerText = `${activePct}%`;
+            document.getElementById("vaultBalVal").innerText = fmtMoney(st.vaultBal);
+            document.getElementById("vaultPctVal").innerText = `${vaultPct}%`;
+
+            // Modal previews
+            document.getElementById("mVaultPreview").innerText = fmtMoney(st.vaultBal);
+            document.getElementById("mActivePreview").innerText = fmtMoney(st.activeCap);
+
+            // Key metrics
+            const roiEl = document.getElementById("roiVal");
+            roiEl.innerText = `${st.roi >= 0 ? "+" : ""}${st.roi.toFixed(1)}%`;
+            roiEl.className = `font-mono text-base sm:text-lg font-bold ${st.roi >= 0 ? "text-emerald-400" : "text-rose-400"}`;
+
+            document.getElementById("winRateVal").innerText = `${st.winRate.toFixed(0)}%`;
+            document.getElementById("totalTradesSub").innerText = `${appData.trades.length} total trade`;
+            document.getElementById("pfVal").innerText = st.pf.toFixed(2);
+            document.getElementById("cashOutVal").innerText = fmtMoney(st.cashOut);
+
+            renderTables();
+            renderChart();
+        }
+
+        function renderTables() {
+            document.getElementById("badgeTradeCount").innerText = appData.trades.length;
+            document.getElementById("badgeCfCount").innerText = appData.cashflows.length;
+
+            // 1. Jurnal Trade
+            const sortedTrades = [...appData.trades].sort((a, b) => new Date(b.date) - new Date(a.date));
+            document.getElementById("tradeRows").innerHTML = sortedTrades.map(t => {
+                const win = t.pnl >= 0;
+                return `
+                    <tr class="hover:bg-zinc-900/50 transition">
+                        <td class="py-2.5 px-4 font-mono text-[11px] text-zinc-500 whitespace-nowrap">${t.date}</td>
+                        <td class="py-2.5 px-3 font-semibold text-white whitespace-nowrap">${t.pair}</td>
+                        <td class="py-2.5 px-3 whitespace-nowrap">
+                            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded ${t.side === "LONG" ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}">${t.side}</span>
+                        </td>
+                        <td class="py-2.5 px-3 text-right font-mono font-semibold whitespace-nowrap ${win ? "text-emerald-400" : "text-rose-400"}">${fmtMoney(t.pnl, true)}</td>
+                        <td class="py-2.5 px-4 text-zinc-400 truncate max-w-[180px]">${t.note || "-"}</td>
+                        <td class="py-2.5 px-3 text-right ${isAdmin ? "" : "hidden"}">
+                            <button onclick="deleteTrade(${t.id})" class="text-zinc-500 hover:text-rose-400"><i class="fa-solid fa-trash-can"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+
+            // 2. Arus Kas (Anti-Minus: Semua WD berwarna biru/cyan/netral)
+            const sortedCf = [...appData.cashflows].sort((a, b) => new Date(b.date) - new Date(a.date));
+            document.getElementById("cashflowRows").innerHTML = sortedCf.map(c => {
+                let badge = "", flow = "", numColor = "text-zinc-200";
+                if (c.type === "TOPUP") {
+                    badge = `<span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">Uang Masuk</span>`;
+                    flow = `Rekening ➔ Dompet`;
+                    numColor = "text-blue-400";
+                } else if (c.type === "ALLOCATE") {
+                    badge = `<span class="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">Ke Modal Trade</span>`;
+                    flow = `Dompet ➔ Modal Trade`;
+                } else if (c.type === "VAULT") {
+                    badge = `<span class="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">Panen Profit</span>`;
+                    flow = `Modal Trade ➔ Dompet`;
+                    numColor = "text-cyan-400";
+                } else if (c.type === "WITHDRAW") {
+                    badge = `<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">Tarik Keluar</span>`;
+                    flow = `Dompet ➔ Rekening`;
+                    numColor = "text-emerald-300";
+                }
+
+                return `
+                    <tr class="hover:bg-zinc-900/50 transition">
+                        <td class="py-2.5 px-4 font-mono text-[11px] text-zinc-500 whitespace-nowrap">${c.date}</td>
+                        <td class="py-2.5 px-3 whitespace-nowrap">${badge}</td>
+                        <td class="py-2.5 px-3 text-zinc-400 whitespace-nowrap">${flow}</td>
+                        <td class="py-2.5 px-3 text-right font-mono font-semibold whitespace-nowrap ${numColor}">${fmtMoney(c.amount)}</td>
+                        <td class="py-2.5 px-4 text-zinc-400 truncate max-w-[180px]">${c.note}</td>
+                        <td class="py-2.5 px-3 text-right ${isAdmin ? "" : "hidden"}">
+                            <button onclick="deleteCashflow(${c.id})" class="text-zinc-500 hover:text-rose-400"><i class="fa-solid fa-trash-can"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        function setChartFilter(tf) {
+            chartFilter = tf;
+            ["ALL", "30D", "7D"].forEach(k => {
+                const btn = document.getElementById("tf-" + k);
+                btn.className = k === tf ? "px-2 py-0.5 rounded bg-zinc-700 text-white" : "px-2 py-0.5 rounded text-zinc-400 hover:text-white";
+            });
+            renderChart();
+        }
+
+        function renderChart() {
+            const divider = currency === "IDR" ? 1 : USD_RATE;
+            let sorted = [...appData.trades].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            if (chartFilter !== "ALL" && sorted.length > 0) {
+                const days = chartFilter === "7D" ? 7 : 30;
+                const latestDate = new Date(sorted[sorted.length - 1].date);
+                const cutoff = new Date(latestDate.getTime() - days * 86400000);
+                sorted = sorted.filter(t => new Date(t.date) >= cutoff);
+            }
+
+            const labels = ["Start"];
+            const points = [0];
+            let acc = 0;
+
+            sorted.forEach(t => {
+                labels.push(t.date.slice(5));
+                acc += t.pnl;
+                points.push(acc / divider);
+            });
+
+            const ctx = document.getElementById("equityChart").getContext("2d");
+            if (chartInstance) chartInstance.destroy();
+
+            const grad = ctx.createLinearGradient(0, 0, 0, 175);
+            grad.addColorStop(0, "rgba(16, 185, 129, 0.25)");
+            grad.addColorStop(1, "rgba(16, 185, 129, 0)");
+
+            chartInstance = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels,
+                    datasets: [{
+                        data: points,
+                        borderColor: "#10b981",
+                        backgroundColor: grad,
+                        borderWidth: 2,
+                        tension: 0.35,
+                        fill: true,
+                        pointRadius: 2.5,
+                        pointBackgroundColor: "#10b981"
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: "#18181b",
+                            borderColor: "#27272a",
+                            borderWidth: 1,
+                            callbacks: {
+                                label: c => `Profit Murni: ${fmtMoney(c.parsed.y * divider, true)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: "#71717a", font: { size: 10, family: "JetBrains Mono" } } },
+                        y: {
+                            grid: { color: "rgba(255,255,255,0.04)" },
+                            ticks: {
+                                color: "#71717a",
+                                font: { size: 10, family: "JetBrains Mono" },
+                                callback: v => currency === "IDR" ? (v / 1000000).toFixed(1) + "jt" : "$" + v
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Tabs & Modals
+        function switchTab(tab) {
+            const isT = tab === "trades";
+            document.getElementById("panelTrades").classList.toggle("hidden", !isT);
+            document.getElementById("panelCashflow").classList.toggle("hidden", isT);
+            document.getElementById("tabBtnTrades").className = isT ? "px-3 py-1 rounded-lg text-xs font-semibold bg-zinc-800 text-white transition" : "px-3 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white transition";
+            document.getElementById("tabBtnCashflow").className = !isT ? "px-3 py-1 rounded-lg text-xs font-semibold bg-zinc-800 text-white transition" : "px-3 py-1 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white transition";
+            document.getElementById("tabHintText").innerText = isT ? "Riwayat eksekusi market" : "Mutasi dana terpisah dari ROI";
+        }
+
+        function openModal(id) {
+            const el = document.getElementById(id);
+            el.classList.remove("hidden");
+            el.classList.add("flex");
+            const today = new Date().toISOString().split("T")[0];
+            if (id === "tradeModal") document.getElementById("tDate").value = today;
+            if (id === "cashflowModal") document.getElementById("cDate").value = today;
+        }
+
+        function closeModal(id) {
+            const el = document.getElementById(id);
+            el.classList.add("hidden");
+            el.classList.remove("flex");
+        }
+
+        function openProfileModal() {
+            const p = appData.profile;
+            document.getElementById("pName").value = p.name;
+            document.getElementById("pAlias").value = p.alias;
+            document.getElementById("pBio").value = p.bio;
+            document.getElementById("pX").value = p.socials?.x || "";
+            document.getElementById("pTg").value = p.socials?.telegram || "";
+            document.getElementById("pTv").value = p.socials?.tradingview || "";
+            document.getElementById("pIg").value = p.socials?.instagram || "";
+            openModal("profileModal");
+        }
+
+        function openExportModal() {
+            document.getElementById("exportJsonBox").value = JSON.stringify(appData, null, 2);
+            openModal("exportModal");
+        }
+
+        function copyJsonData() {
+            const box = document.getElementById("exportJsonBox");
+            box.select();
+            document.execCommand("copy");
+            showToast("JSON berhasil disalin ke clipboard");
+        }
+
+        function downloadJsonFile() {
+            const blob = new Blob([JSON.stringify(appData, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "data.json";
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast("File data.json berhasil diunduh");
+        }
+
+        function updateCfDesc() {
+            const val = document.getElementById("cType").value;
+            const map = {
+                TOPUP: "Menambah saldo ke Dompet Aman dari rekening pribadi.",
+                ALLOCATE: "Memindahkan dana dari Dompet Aman ke Modal Trading.",
+                VAULT: "Mengamankan profit dari Modal Trading ke Dompet Aman.",
+                WITHDRAW: "Menarik uang dari Dompet Aman ke rekening pribadi (tidak merusak ROI)."
+            };
+            document.getElementById("cDescHelper").innerText = map[val];
+        }
+
+        function showToast(msg, err = false) {
+            const c = document.getElementById("toastContainer");
+            const t = document.createElement("div");
+            t.className = `px-3.5 py-2 rounded-xl border text-xs font-medium shadow-lg ${err ? "bg-rose-950/90 border-rose-500/40 text-rose-200" : "bg-zinc-900 border-zinc-700 text-zinc-100"}`;
+            t.innerText = msg;
+            c.appendChild(t);
+            setTimeout(() => t.remove(), 2800);
+        }
+
+        // Admin Actions
+        function submitTrade(e) {
+            e.preventDefault();
+            let pnl = parseFloat(document.getElementById("tPnl").value);
+            if (currency === "USD") pnl *= USD_RATE;
+
+            appData.trades.push({
+                id: Date.now(),
+                date: document.getElementById("tDate").value,
+                pair: document.getElementById("tPair").value.toUpperCase(),
+                side: document.getElementById("tSide").value,
+                pnl,
+                note: document.getElementById("tNote").value
+            });
+            saveToLocalStorage();
+            document.getElementById("tradeForm").reset();
+            closeModal("tradeModal");
+            renderAll();
+            switchTab("trades");
+            showToast("Trade disimpan");
+        }
+
+        function submitCashflow(e) {
+            e.preventDefault();
+            const st = computeStats();
+            const type = document.getElementById("cType").value;
+            let amount = parseFloat(document.getElementById("cAmount").value);
+            if (currency === "USD") amount *= USD_RATE;
+
+            if ((type === "ALLOCATE" || type === "WITHDRAW") && amount > st.vaultBal) {
+                showToast("Saldo Dompet Aman tidak mencukupi", true);
+                return;
+            }
+            if (type === "VAULT" && amount > st.activeCap) {
+                showToast("Saldo Modal Trading tidak mencukupi", true);
+                return;
+            }
+
+            appData.cashflows.push({
+                id: Date.now(),
+                date: document.getElementById("cDate").value,
+                type,
+                amount,
+                note: document.getElementById("cNote").value
+            });
+            saveToLocalStorage();
+            document.getElementById("cashflowForm").reset();
+            updateCfDesc();
+            closeModal("cashflowModal");
+            renderAll();
+            switchTab("cashflow");
+            showToast("Mutasi dana dicatat");
+        }
+
+        function saveProfile(e) {
+            e.preventDefault();
+            appData.profile = {
+                name: document.getElementById("pName").value.trim(),
+                alias: document.getElementById("pAlias").value.trim(),
+                bio: document.getElementById("pBio").value.trim(),
+                socials: {
+                    x: document.getElementById("pX").value.trim(),
+                    telegram: document.getElementById("pTg").value.trim(),
+                    tradingview: document.getElementById("pTv").value.trim(),
+                    instagram: document.getElementById("pIg").value.trim()
+                }
+            };
+            saveToLocalStorage();
+            closeModal("profileModal");
+            renderProfile();
+            showToast("Profil & sosmed diperbarui");
+        }
+
+        async function applyNewPassword() {
+            const raw = document.getElementById("newPassInput").value.trim();
+            if (!raw) return;
+            appData.passwordHash = await sha256(raw);
+            saveToLocalStorage();
+            document.getElementById("newPassInput").value = "";
+            showToast("Password admin baru diterapkan");
+        }
+
+        function deleteTrade(id) {
+            appData.trades = appData.trades.filter(t => t.id !== id);
+            saveToLocalStorage();
+            renderAll();
+            showToast("Trade dihapus");
+        }
+
+        function deleteCashflow(id) {
+            appData.cashflows = appData.cashflows.filter(c => c.id !== id);
+            saveToLocalStorage();
+            renderAll();
+            showToast("Catatan dana dihapus");
+        }
+
+        window.addEventListener("DOMContentLoaded", initApp);
+    </script>
+</body>
+</html>
